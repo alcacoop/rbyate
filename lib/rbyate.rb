@@ -1,10 +1,15 @@
+require 'logger'
 
 module Yate
-
   # :stopdoc:
   VERSION = '0.0.1'
   LIBPATH = ::File.expand_path(::File.dirname(__FILE__)) + ::File::SEPARATOR
   PATH = ::File.dirname(LIBPATH) + ::File::SEPARATOR
+
+  class <<self
+    attr_accessor :logger
+  end
+
   # :startdoc:
 
   # Returns the version string for the library.
@@ -44,6 +49,6 @@ module Yate
 
 end  # module Rbyate
 
-Yate.require_all_libs_relative_to(__FILE__)
+Yate.require_all_libs_relative_to(__FILE__, 'yate')
 
 # EOF

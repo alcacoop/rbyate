@@ -26,7 +26,7 @@ PROJ.version = Yate::VERSION
 PROJ.rubyforge.name = 'rbyate'
 
 PROJ.dependencies = [ 'eventmachine' ]
-PROJ.exclude = %w(.git pkg)
+PROJ.exclude = ['.git', 'pkg', '.*~']
 
 PROJ.spec.opts << '--color'
 
