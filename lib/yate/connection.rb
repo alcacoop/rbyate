@@ -62,22 +62,22 @@ module Yate
     def send_event(event, params)
       # FIXME: params need escaping... it's better to
       #        assign to Message this task?
-      logger.debug "SENDING %%>#{event}:#{params.join(':')}\n"
+      logger.debug "SENDING %%>#{event}:#{params.join(':')}"
       send_data "%%>#{event}:#{params.join(':')}\n"
     end
         
-    def receive_line(raw_message)
-      logger.debug "Received #{raw_message.inspect}"
-      message = Yate::Message.from_protocol_text raw_message
-      logger.debug message.inspect
+    def receive_line(raw_event)
+      logger.debug "RECEIVING #{raw_event.inspect}"
+      event = Yate::Event.from_protocol_text raw_event
+      logger.debug event.inspect
 
-      acknowledge message
+      acknowledge event
     rescue => e
-      logger.fatal e, *e.backtrace
+      logger.debug e, *e.backtrace
     end
     
-    def acknowledge(message)
-      send_event message.to_ack_s
+    def acknowledge(event)
+      send_data event.to_ack_s
     end
     
   end

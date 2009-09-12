@@ -1,3 +1,5 @@
+require 'ostruct'
+
 module Yate
   class Event
         
@@ -69,8 +71,8 @@ module Yate
       Yate.logger
     end
         
-    def initialize(message_name, unique_id, *rest_of_fields)
-      @message_name, @unique_id, @rest_of_fields = message_name, unique_id, rest_of_fields
+    def initialize(event)
+      @event_data = event
     end
     
     def to_s

@@ -20,6 +20,7 @@ YATE is a FreeSoftware Telephone Engine developed by Null Team (http://null.ro)
 
   require 'rbyate'
   
+  Yate.logger = Logger.new(STDOUT)
   EM.run { Yate::Connection.connect("127.0.0.1", "3000") }
 
 == REQUIREMENTS:
