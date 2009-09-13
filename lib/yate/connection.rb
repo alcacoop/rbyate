@@ -2,11 +2,14 @@ require 'rubygems'
 require 'eventmachine'
 
 module Yate
-      
+  
   class Connection < EM::Protocols::LineAndTextProtocol
-        
     class << self
       def connect(host, port)
+        EM.error_handler { |e|
+          Yate.logger.error "Error raised during event loop: #{e.message}"
+        }
+
         EM.connect(host, port, self)
       end
     end
@@ -14,19 +17,27 @@ module Yate
     def logger
       Yate.logger
     end
+
+    def connected_callback(&block)
+      @connected_callback = EM.spawn { block.call }
+    end
+
+    def event_callback(&block)
+      @event_callback = EM.spawn { |value| block.call(value) }
+    end
+
+    def error_callback(&block)
+      EM.error_handler block
+    end
         
     def initialize(*args)
       super
     end
         
-    def post_init
+    def connection_completed
       logger.info "Connection established"
       connect
-      [ "agent.register", "engine.status", "chan.attach", "call.execute"].each do |evt|
-          watch evt
-      end
-    rescue
-      logger.error "RAISED EXCEPTION: #{$!}"
+      @connected_callback.notify
     end
 
     def unbind
@@ -71,9 +82,11 @@ module Yate
       event = Yate::Event.from_protocol_text raw_event
       logger.debug event.inspect
 
+      @event_callback.notify event if @event_callback
+
       acknowledge event
     rescue => e
-      logger.debug e, *e.backtrace
+      logger.error e, *e.backtrace
     end
     
     def acknowledge(event)

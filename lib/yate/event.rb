@@ -76,8 +76,11 @@ module Yate
     end
     
     def to_s
-      ### FIXME: Not Implemented
-      raise "NOT IMPLEMENTED"
+      self.inspect
+    end
+
+    def method_missing(method_name,*args)
+      @event_data.send(method_name,args)
     end
         
     def to_ack_s
