@@ -5,12 +5,14 @@ module Yate
   
   class Connection < EM::Protocols::LineAndTextProtocol
     class << self
-      def connect(host, port)
+      def connect(host, port, connected_callback, event_callback)
         EM.error_handler { |e|
           Yate.logger.error "Error raised during event loop: #{e.message}"
         }
 
-        EM.connect(host, port, self)
+        con = EM.connect(host, port, self)
+        con.connected_callback(connected_callback)
+        con.event_callback(event_callback)
       end
     end
 
@@ -18,12 +20,18 @@ module Yate
       Yate.logger
     end
 
-    def connected_callback(&block)
-      @connected_callback = EM.spawn { block.call }
+    def connected_callback(block)
+      connection = self
+      @connected_callback = EM.spawn { 
+        block.call(connection)
+      }
     end
 
-    def event_callback(&block)
-      @event_callback = EM.spawn { |value| block.call(value) }
+    def event_callback(block)
+      connection = self
+      @event_callback = EM.spawn { |value| 
+        block.call(connection,value) 
+      }
     end
 
     def error_callback(&block)
@@ -37,7 +45,7 @@ module Yate
     def connection_completed
       logger.info "Connection established"
       connect
-      @connected_callback.notify
+      @connected_callback.notify if @connected_callback
     end
 
     def unbind
@@ -80,16 +88,14 @@ module Yate
     def receive_line(raw_event)
       logger.debug "RECEIVING #{raw_event.inspect}"
       event = Yate::Event.from_protocol_text raw_event
-      logger.debug event.inspect
 
       @event_callback.notify event if @event_callback
 
-      acknowledge event
-    rescue => e
-      logger.error e, *e.backtrace
+      ack event
     end
     
-    def acknowledge(event)
+    def ack(event)
+      logger.debug "ACK #{event.to_ack_s}"
       send_data event.to_ack_s
     end
     

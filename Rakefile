@@ -30,4 +30,10 @@ PROJ.exclude = ['.git', 'pkg', '.*~']
 
 PROJ.spec.opts << '--color'
 
+require 'cucumber/rake/task'
+Cucumber::Rake::Task.new(:features) do |t|
+  t.cucumber_opts = "--format pretty"
+  t.rcov = true
+end
+
 # EOF

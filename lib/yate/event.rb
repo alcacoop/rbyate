@@ -1,5 +1,3 @@
-require 'ostruct'
-
 module Yate
   class Event
         
@@ -11,9 +9,9 @@ module Yate
       end
           
       def parse_line(line)
-        event = OpenStruct.new
-        fields = OpenStruct.new
-        params = OpenStruct.new
+        event = {}
+        data = {}
+        params = {}
 
         line = line.split(":")
         rawevent = line[0]
@@ -25,40 +23,48 @@ module Yate
         when "Error in": 
             raise cols[0]
         when "%%>message":
-            fields.msgid,fields.time,fields.name,fields.retvalue,*fields.params = cols
-            fields.processed = false
-            event.name, event.etype, event.direction = ["message", "new", "incoming"]
-            event.fields = fields
+            data[:msgid],data[:time],data[:name],data[:retvalue],*rawparams = cols
+            data[:processed] = false
+            event[:name], event[:etype], event[:direction] = ["message", "new", "incoming"]
+            rawparams.each do |param|
+              key, value = param.split("=")
+              params[key.to_sym] = value
+            end
+            event[:data] = data ; event[:params] = params
             return event
         when "%%<message":
-            fields.msgid,fields.processed,fields.name,fields.retvalue,*fields.params = cols
-            event.name, event.etype, event.direction = ["message", "answer", "incoming"]
-            event.fields = fields
+            data[:msgid],data[:processed],data[:name],data[:retvalue],*rawparams = cols
+            event[:name], event[:etype], event[:direction] = ["message", "answer", "incoming"]
+            rawparams.each do |param|
+              key, value = param.split("=")
+              params[key.to_sym] = value
+            end
+            event[:data] = data ; event[:params] = params
             return event
         when "%%<install":
-            fields.priority,fields.name,fields.success = cols
-            event.name, event.etype, event.direction = ["install", "answer", "incoming"]
-            event.fields = fields
+            data[:priority],data[:name],data[:success] = cols
+            event[:name], event[:etype], event[:direction] = ["install", "answer", "incoming"]
+            event[:data] = data
             return event
         when "%%<uninstall":
-            fields.priority,fields.name,fields.success = cols
-            event.name, event.etype, event.direction = ["uninstall", "answer", "incoming"]
-            event.fields = fields
+            data[:priority],data[:name],data[:success] = cols
+            event[:name], event[:etype], event[:direction] = ["uninstall", "answer", "incoming"]
+            event[:data] = data
             return event
         when "%%<watch":
-            fields.name,fields.success = cols
-            event.name, event.etype, event.direction = ["watch", "answer", "incoming"]
-            event.fields = fields
+            data[:name],data[:success] = cols
+            event[:name], event[:etype], event[:direction] = ["watch", "answer", "incoming"]
+            event[:data] = data
             return event
         when "%%<unwatch":
-            fields.name,fields.success = cols
-            event.name, event.etype, event.direction = ["unwatch", "answer", "incoming"]
-            event.fields = fields
+            data[:name],data[:success] = cols
+            event[:name], event[:etype], event[:direction] = ["unwatch", "answer", "incoming"]
+            event[:data] = data
             return event
         when "%%<setlocal":
-            fields.name,fields.value,fields.success = cols
-            event.name, event.etype, event.direction = ["setlocal", "answer", "incoming"]
-            event.fields = fields
+            data[:name],data[:value],data[:success] = cols
+            event[:name], event[:etype], event[:direction] = ["setlocal", "answer", "incoming"]
+            event[:data] = data
             return event
         else
           raise "NOT IMPLEMENTED: unkown '#{event}' event"
@@ -80,19 +86,36 @@ module Yate
     end
 
     def method_missing(method_name,*args)
-      @event_data.send(method_name,args)
+      return @event_data[method_name] if @event_data[method_name]
+      if @event_data[:data] and method_name.to_s =~ /^evt_(.*)$/ 
+        return @event_data[:data][$1.to_sym] 
+      end
+      if @event_data[:params] and method_name.to_s =~ /^msg_(.*)$/ 
+        return @event_data[:params][$1.to_sym] 
+      end
+      case method_name
+      when :event
+        return @event_data
+      when :data
+        return @event_data[:data]
+      when :params
+        return @event_data[:params]
+      end
+      raise NoMethodError
     end
         
     def to_ack_s
       evt = @event_data
-      fields = @event_data.fields
+      data = @event_data[:data]
       
-      return nil if (evt.name != "message" or evt.etype != "new") or
-                    (fields.msgid and not fields.msgid.empty?)
+      return nil if (evt[:name] != "message" or evt[:etype] != "new") or
+                    (data[:msgid] and not data[:msgid].empty?)
 
-      params = fields.params.map { |param| param.gsub(":", "%z") }
+      params = @event_data[:params].map { |k,v| "#{k}=#{v}" }
+      fields_ary = ['message',data[:msgid],data[:processed],data[:name],data[:retvalue],params]
+      fields_ary.map { |param| param.gsub(":", "%z") }
 
-      "%%<#{['message',fields.msgid,fields.processed,fields.name,fields.retvalue,params].join(":")}\n" 
+      "%%<#{fields_ary.join(":")}\n" 
     end
         
   end
